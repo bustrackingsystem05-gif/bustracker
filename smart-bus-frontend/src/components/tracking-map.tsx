@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
@@ -41,9 +41,17 @@ interface TrackingMapProps {
 
 function MapUpdater({ center }: { center: [number, number] }) {
   const map = useMap()
+  const [previousCenter, setPreviousCenter] = useState<[number, number] | null>(null)
   
   useEffect(() => {
-    map.setView(center, 15)
+    // Only update map view if the position has actually changed
+    if (!previousCenter || 
+        Math.abs(previousCenter[0] - center[0]) > 0.0001 || 
+        Math.abs(previousCenter[1] - center[1]) > 0.0001) {
+      console.log('🗺️ Map updating to new position:', center)
+      map.setView(center, 15, { animate: true, duration: 1 })
+      setPreviousCenter(center)
+    }
   }, [map, center])
   
   return null
@@ -51,10 +59,17 @@ function MapUpdater({ center }: { center: [number, number] }) {
 
 export default function TrackingMap({ busData, className }: TrackingMapProps) {
   const center: [number, number] = [busData.lat, busData.lon]
+  const [mapKey, setMapKey] = useState(0)
+
+  // Force map re-render when bus data changes significantly
+  useEffect(() => {
+    setMapKey(prev => prev + 1)
+  }, [busData.id])
 
   return (
     <div className={className}>
       <MapContainer
+        key={mapKey}
         center={center}
         zoom={15}
         style={{ height: '100%', width: '100%' }}
@@ -74,9 +89,15 @@ export default function TrackingMap({ busData, className }: TrackingMapProps) {
               <p className="text-sm text-gray-600 mb-1">
                 Speed: {busData.speed.toFixed(1)} km/h
               </p>
+              <p className="text-sm text-gray-600 mb-1">
+                Position: {busData.lat.toFixed(6)}, {busData.lon.toFixed(6)}
+              </p>
               <p className="text-sm text-gray-600">
                 Updated: {new Date(busData.updated).toLocaleTimeString()}
               </p>
+              <div className="mt-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
+                🔄 Live Updates Every 5s
+              </div>
             </div>
           </Popup>
         </Marker>

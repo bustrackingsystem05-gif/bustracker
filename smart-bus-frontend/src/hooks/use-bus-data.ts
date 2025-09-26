@@ -8,11 +8,11 @@ export function useBusData() {
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
 
   useEffect(() => {
     const fetchBusData = async () => {
       try {
-        setLoading(true)
         setError(null)
         
         const response = await fetch(`${API_BASE_URL}/api/locations`)
@@ -25,6 +25,8 @@ export function useBusData() {
         
         if (result.success) {
           setData(result.data)
+          setLastUpdate(new Date())
+          console.log('📍 Bus data updated:', Object.keys(result.data).length, 'buses')
         } else {
           throw new Error(result.error || 'Failed to fetch bus data')
         }
@@ -36,13 +38,18 @@ export function useBusData() {
       }
     }
 
+    // Initial fetch
     fetchBusData()
+    setLoading(false)
     
-    // Poll every 5 seconds
-    const interval = setInterval(fetchBusData, 5000)
+    // Poll every 5 seconds for continuous updates
+    const interval = setInterval(() => {
+      console.log('🔄 Polling for bus updates...')
+      fetchBusData()
+    }, 5000)
     
     return () => clearInterval(interval)
   }, [])
 
-  return { data, loading, error }
+  return { data, loading, error, lastUpdate }
 }

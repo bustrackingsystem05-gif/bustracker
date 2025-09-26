@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
-import { MapPin, Clock, Gauge, User } from 'lucide-react'
+import { MapPin, Clock, Gauge, User, Wifi } from 'lucide-react'
 
 interface Bus {
   id: string
@@ -33,6 +33,18 @@ export function BusCard({ bus }: BusCardProps) {
       minute: '2-digit'
     })
   }
+
+  const getUpdateStatus = () => {
+    const updateTime = new Date(bus.updated)
+    const now = new Date()
+    const diffSeconds = (now.getTime() - updateTime.getTime()) / 1000
+    
+    if (diffSeconds < 10) return { color: 'text-green-500', text: 'Live' }
+    if (diffSeconds < 30) return { color: 'text-yellow-500', text: 'Recent' }
+    return { color: 'text-red-500', text: 'Delayed' }
+  }
+
+  const updateStatus = getUpdateStatus()
 
   return (
     <motion.div
@@ -67,6 +79,12 @@ export function BusCard({ bus }: BusCardProps) {
           {bus.status === 'active' ? 'Active' : 'Stopped'}
         </div>
       </div>
+          
+          {/* Live Update Indicator */}
+          <div className={`flex items-center space-x-1 text-xs ${updateStatus.color}`}>
+            <Wifi className="w-3 h-3" />
+            <span>{updateStatus.text}</span>
+          </div>
 
       {/* ETA */}
       <div className="mb-4">

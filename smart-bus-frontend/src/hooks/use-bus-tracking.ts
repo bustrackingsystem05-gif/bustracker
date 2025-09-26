@@ -16,6 +16,7 @@ export function useBusTracking(busId: string) {
   const [busData, setBusData] = useState<BusData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
 
   useEffect(() => {
     const fetchBusData = async () => {
@@ -34,12 +35,26 @@ export function useBusTracking(busId: string) {
         const result = await response.json()
         
         if (result.success) {
+          const newBusData = {
+            id: busId,
+            lat: result.data.lat,
+            lon: result.data.lon,
+            speed: result.data.speed,
+            updated: result.data.updated
+          }
+          
           setBusData({
             id: busId,
             lat: result.data.lat,
             lon: result.data.lon,
             speed: result.data.speed,
             updated: result.data.updated
+          })
+          setLastUpdate(new Date())
+          console.log(`🚌 Bus ${busId} updated:`, {
+            position: `${result.data.lat.toFixed(6)}, ${result.data.lon.toFixed(6)}`,
+            speed: `${result.data.speed} km/h`,
+            time: new Date(result.data.updated).toLocaleTimeString()
           })
         } else {
           throw new Error(result.error || 'Failed to fetch bus data')
@@ -53,14 +68,18 @@ export function useBusTracking(busId: string) {
     }
 
     if (busId) {
+      // Initial fetch
       fetchBusData()
       
-      // Poll every 5 seconds
-      const interval = setInterval(fetchBusData, 5000)
+      // Poll every 5 seconds for real-time updates
+      const interval = setInterval(() => {
+        console.log(`🔄 Polling bus ${busId} for updates...`)
+        fetchBusData()
+      }, 5000)
       
       return () => clearInterval(interval)
     }
   }, [busId])
 
-  return { busData, loading, error }
+  return { busData, loading, error, lastUpdate }
 }

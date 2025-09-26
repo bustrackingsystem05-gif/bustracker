@@ -6,6 +6,7 @@ import { BusCard } from '@/components/bus-card'
 import { LoadingSpinner } from '@/components/loading-spinner'
 import { ErrorMessage } from '@/components/error-message'
 import { useBusData } from '@/hooks/use-bus-data'
+import { RefreshCw } from 'lucide-react'
 
 interface Bus {
   id: string
@@ -21,7 +22,7 @@ interface Bus {
 
 export default function BusesPage() {
   const [buses, setBuses] = useState<Bus[]>([])
-  const { data, loading, error } = useBusData()
+  const { data, loading, error, lastUpdate } = useBusData()
 
   useEffect(() => {
     if (data) {
@@ -67,12 +68,27 @@ export default function BusesPage() {
         transition={{ duration: 0.6 }}
       >
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-            Available Buses
-          </h1>
-          <p className="text-gray-600 dark:text-gray-300">
-            {buses.length} buses currently tracked
-          </p>
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+                Available Buses
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300">
+                {buses.length} buses currently tracked
+              </p>
+            </div>
+            
+            {/* Live Update Indicator */}
+            <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+              <RefreshCw className="w-4 h-4 animate-spin" />
+              <span>Live Updates</span>
+              {lastUpdate && (
+                <span className="text-xs">
+                  ({lastUpdate.toLocaleTimeString()})
+                </span>
+              )}
+            </div>
+          </div>
         </div>
 
         {buses.length === 0 ? (
@@ -84,7 +100,7 @@ export default function BusesPage() {
               No buses available
             </h3>
             <p className="text-gray-600 dark:text-gray-300">
-              Check back later or contact support if this persists.
+              Waiting for GPS data from hardware devices...
             </p>
           </div>
         ) : (
