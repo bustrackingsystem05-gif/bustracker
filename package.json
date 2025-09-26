@@ -1,0 +1,24 @@
+{
+  "name": "smart-bus-tracking-backend",
+  "version": "1.0.0",
+  "description": "Smart Bus Tracking Backend API with GPS data handling and ETA calculations",
+  "main": "server.js",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "bus-tracking",
+    "gps",
+    "nodejs",
+    "express",
+    "api",
+    "esp32"
+  ],
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  }
+}
