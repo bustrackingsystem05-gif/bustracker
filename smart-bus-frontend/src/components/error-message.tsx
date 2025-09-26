@@ -1,7 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { AlertCircle, RefreshCw } from 'lucide-react'
+import { CircleAlert as AlertCircle, RefreshCw } from 'lucide-react'
 
 interface ErrorMessageProps {
   message: string
