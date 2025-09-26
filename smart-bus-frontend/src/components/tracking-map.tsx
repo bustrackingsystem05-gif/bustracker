@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
+import { BUS_ROUTES, getNextStop } from '@/data/bus-routes'
 
 // Fix for default markers in react-leaflet
 delete (L.Icon.Default.prototype as any)._getIconUrl
@@ -24,6 +25,32 @@ const busIcon = new L.Icon({
   iconSize: [40, 40],
   iconAnchor: [20, 20],
   popupAnchor: [0, -20],
+})
+
+// Bus stop icon
+const stopIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="12" cy="12" r="10" fill="#10B981" stroke="white" stroke-width="2"/>
+      <circle cx="12" cy="12" r="4" fill="white"/>
+    </svg>
+  `),
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+  popupAnchor: [0, -12],
+})
+
+// Next stop icon
+const nextStopIcon = new L.Icon({
+  iconUrl: 'data:image/svg+xml;base64,' + btoa(`
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="14" cy="14" r="12" fill="#F59E0B" stroke="white" stroke-width="2"/>
+      <circle cx="14" cy="14" r="6" fill="white"/>
+    </svg>
+  `),
+  iconSize: [28, 28],
+  iconAnchor: [14, 14],
+  popupAnchor: [0, -14],
 })
 
 interface BusData {
@@ -49,7 +76,7 @@ function MapUpdater({ center }: { center: [number, number] }) {
         Math.abs(previousCenter[0] - center[0]) > 0.0001 || 
         Math.abs(previousCenter[1] - center[1]) > 0.0001) {
       console.log('🗺️ Map updating to new position:', center)
-      map.setView(center, 15, { animate: true, duration: 1 })
+      map.setView(center, 13, { animate: true, duration: 1 })
       setPreviousCenter(center)
     }
   }, [map, center])
@@ -60,6 +87,10 @@ function MapUpdater({ center }: { center: [number, number] }) {
 export default function TrackingMap({ busData, className }: TrackingMapProps) {
   const center: [number, number] = [busData.lat, busData.lon]
   const [mapKey, setMapKey] = useState(0)
+  
+  // Get bus route data
+  const route = BUS_ROUTES[busData.id]
+  const nextStop = route ? getNextStop(route, busData.lat, busData.lon) : null
 
   // Force map re-render when bus data changes significantly
   useEffect(() => {
@@ -67,13 +98,14 @@ export default function TrackingMap({ busData, className }: TrackingMapProps) {
   }, [busData.id])
 
   return (
-    <div className={className}>
+    <div className={`${className} relative`}>
       <MapContainer
         key={mapKey}
         center={center}
-        zoom={15}
+        zoom={13}
         style={{ height: '100%', width: '100%' }}
         zoomControl={true}
+        className="rounded-lg lg:rounded-none"
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -82,19 +114,65 @@ export default function TrackingMap({ busData, className }: TrackingMapProps) {
         
         <MapUpdater center={center} />
         
+        {/* Bus Route Polyline */}
+        {route && (
+          <Polyline
+            positions={route.polyline}
+            color="#3B82F6"
+            weight={4}
+            opacity={0.7}
+            dashArray="10, 10"
+          />
+        )}
+        
+        {/* Bus Stops */}
+        {route && route.stops.map((stop) => (
+          <Marker
+            key={stop.id}
+            position={[stop.lat, stop.lon]}
+            icon={nextStop?.id === stop.id ? nextStopIcon : stopIcon}
+          >
+            <Popup>
+              <div className="text-center min-w-[200px]">
+                <h3 className="font-bold text-lg mb-2">{stop.name}</h3>
+                <p className="text-sm text-gray-600 mb-1">
+                  Scheduled: {stop.scheduledTime}
+                </p>
+                {nextStop?.id === stop.id && (
+                  <div className="mt-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded text-xs font-semibold">
+                    🎯 Next Stop
+                  </div>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+        
+        {/* Bus Marker */}
         <Marker position={center} icon={busIcon}>
           <Popup>
-            <div className="text-center">
+            <div className="text-center min-w-[250px]">
               <h3 className="font-bold text-lg mb-2">Bus {busData.id.replace('BUS_', '')}</h3>
-              <p className="text-sm text-gray-600 mb-1">
-                Speed: {busData.speed.toFixed(1)} km/h
-              </p>
-              <p className="text-sm text-gray-600 mb-1">
-                Position: {busData.lat.toFixed(6)}, {busData.lon.toFixed(6)}
-              </p>
-              <p className="text-sm text-gray-600">
-                Updated: {new Date(busData.updated).toLocaleTimeString()}
-              </p>
+              {route && (
+                <p className="text-sm text-blue-600 mb-2 font-medium">
+                  {route.name}
+                </p>
+              )}
+              <div className="space-y-1 text-sm text-gray-600">
+                <p>Speed: {busData.speed.toFixed(1)} km/h</p>
+                <p>Position: {busData.lat.toFixed(6)}, {busData.lon.toFixed(6)}</p>
+                <p>Updated: {new Date(busData.updated).toLocaleTimeString()}</p>
+              </div>
+              {nextStop && (
+                <div className="mt-3 p-2 bg-yellow-50 rounded">
+                  <p className="text-sm font-semibold text-yellow-800">
+                    Next: {nextStop.name}
+                  </p>
+                  <p className="text-xs text-yellow-600">
+                    Scheduled: {nextStop.scheduledTime}
+                  </p>
+                </div>
+              )}
               <div className="mt-2 px-2 py-1 bg-green-100 text-green-800 rounded text-xs">
                 🔄 Live Updates Every 5s
               </div>
@@ -102,6 +180,35 @@ export default function TrackingMap({ busData, className }: TrackingMapProps) {
           </Popup>
         </Marker>
       </MapContainer>
+      
+      {/* Mobile Route Info Overlay */}
+      <div className="lg:hidden absolute top-4 left-4 right-4 z-10">
+        <div className="bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="font-bold text-gray-900">Bus {busData.id.replace('BUS_', '')}</h3>
+              {route && (
+                <p className="text-xs text-blue-600">{route.name}</p>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold text-gray-900">
+                {busData.speed.toFixed(1)} km/h
+              </p>
+              <p className="text-xs text-gray-500">
+                {new Date(busData.updated).toLocaleTimeString()}
+              </p>
+            </div>
+          </div>
+          {nextStop && (
+            <div className="mt-2 pt-2 border-t border-gray-200">
+              <p className="text-sm font-medium text-yellow-700">
+                Next: {nextStop.name} ({nextStop.scheduledTime})
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
